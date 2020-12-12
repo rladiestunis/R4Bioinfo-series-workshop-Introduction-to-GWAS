@@ -2,7 +2,7 @@
 
 :date: Saturday, December 12, 2020 
 
-**Introduction to Genome-Wide Association Studies **
+**Introduction to Genome-Wide Association Studies**
 
 We are delighted to come together with you to host another online workshop : Introduction to Genome-Wide Association Studies.
 
