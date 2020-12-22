@@ -1,6 +1,12 @@
-
-install.packages(c("poolr","qqman","BGLR","rrBLUP","DT", "SNPRelate","dplyr"))
+#install packages
+install.packages(c("poolr","qqman","BGLR","rrBLUP","DT", "dplyr"))
 install.packages(c("rnaturalearth",'rnaturalearthdata','rgeos','ggspatial'))
+devtools::install_github("dkahle/ggmap", ref = "tidyup")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("SNPRelate")
+
+# load libraries
 library(statgenGWAS )
 library(gdata)
 library(rrBLUP)
@@ -16,8 +22,6 @@ library(rgdal)
 library(RgoogleMaps)
 library(mapproj)
 library(sf)
-devtools::install_github("dkahle/ggmap", ref = "tidyup")
-# load library
 library(OpenStreetMap)
 library(ggplot2)
 library(sf)
@@ -29,11 +33,9 @@ library(rnaturalearthdata)
 
 
 ###
-
-
-
 rm(list = ls())
-setwd("C:\\Users\\tatia\\Desktop\\Training\\RiceDiversity.44K.MSU6.Genotypes_PLINK\\RiceDiversity_44K_Genotypes_PLINK\\")
+#set working directory
+setwd("your working directory")
 Geno <- read_ped("sativas413.ped")
 head(Geno)
 #conatins the marker allele data in 0, 1, 2, and 3 format; 2 represents missing data
@@ -41,9 +43,9 @@ p = Geno$p;p
 n = Geno$n;n
 Geno = Geno$x;Geno
 # Acession information
-FAM <- read.table("sativas413.fam");FAM
+FAM <- read.table("sativas413.fam");head(FAM)
 # Map information
-MAP <- read.table("sativas413.map");MAP
+MAP <- read.table("sativas413.map");head(MAP)
 # Recode the data in ped file
 Geno[Geno == 2] <- NA  # Converting missing data to NA
 Geno[Geno == 0] <- 0  # Converting 0 data to 0
@@ -66,10 +68,10 @@ table(rownames(Geno) == rice.pheno$NSFTVID)
 
 
 # Now let us extract the first trait and assign it to object y
-y <- matrix(rice.pheno$Flowering.time.at.Arkansas)  # # use the first trait 
+y <- matrix(rice.pheno$Plant.height)  # # use the first trait 
 rownames(y) <- rice.pheno$NSFTVID
 index <- !is.na(y)
-y <- y[index, 1, drop = FALSE]  
+y <- y[index, 1, drop = FALSE]  ;y
 Geno <- Geno[index, ]  
 table(rownames(Geno) == rownames(y))
 
@@ -121,11 +123,13 @@ pca <- snpgdsPCA(geno_44k, snp.id = colnames(Geno1))
 #plot results of PCA
 pca <- data.frame(sample.id = row.names(Geno1),
                   EV1 = pca$eigenvect[, 1],
-                  EV2 = pca$eigenvect[, 2])
+                  EV2 = pca$eigenvect[, 2],
+                  EV3 = pca$eigenvect[, 3],
+                  EV4 = pca$eigenvect[, 4])
         
                                                                                                                                                                                     dim(pca$eigenvect)                                                                                              dim(pca$eigenvect)                                                                                              2], EV3 = pca$eigenvect[, 3], EV3 = pca$eigenvect[, 4], stringsAsFactors = FALSE)
 # Plot the PCA
-plot(pca$EV2, pca$EV1, xlab = "eigenvector 3", ylab = "eigenvector 4")
+plot(pca$EV2, pca$EV1, xlab = "eigenvector 2", ylab = "eigenvector 1")
 
 
 #add population information to the plot
@@ -145,8 +149,11 @@ legend(x = "bottomright", legend = levels(factor(pca_population$population)), co
 
 ##by country
 # Extract the location information and add the pca output file
-pca_country <- as.data.frame(cbind(as.numeric(pca$EV1),as.numeric(pca$EV2),as.numeric(pca$EV3),as.numeric(pca$EV4),as.numeric(pca_2$Latitude), as.numeric(pca_2$Longitude)));head(pca_country)
+pca_country <- as.data.frame(cbind(as.numeric(pca$EV1),as.numeric(pca$EV2),as.numeric(pca$EV3),
+                                   as.numeric(pca$EV4),as.numeric(pca_2$Latitude), 
+                                   as.numeric(pca_2$Longitude)));head(pca_country)
 names(pca_country)=c('PC1','PC2','PC3','PC4','LAT','LONG')
+names(pca_country)
 pca_country=na.omit(pca_country)
 #correlation with geography
 cor(pca_country[,1:6],use='pairwise.complete.obs')
@@ -159,7 +166,7 @@ world_points<- st_centroid(world)
 # extract labels
 world_points <- cbind(world, st_coordinates(st_centroid(world$geometry)))
 #define colors for the map
-NCOLS=max(unique(round(50*(pca_country$PC3+0.11))));NCOLS
+NCOLS=max(unique(round(50*(pca_country$PC3-min(pca_country$PC3)+0.02))));NCOLS
 COL=rainbow(NCOLS)
 
 ggplot(data = world) +
@@ -174,9 +181,9 @@ ggplot(data = world) +
                    panel.background = element_rect(fill = "aliceblue")) +
   geom_text(data= world_points,aes(x=X, y=Y, label=name),
             color = "gray20", fontface = "italic", check_overlap = T, size = 3)+
-  geom_point(data = pca_country, aes(x = LONG, y = LAT), size = 4,   shape = 24, 
-             fill = COL[round(50*(pca_country$PC3+0.11))])
-
+  geom_point(data = pca_country, aes(x = pca_country$LONG, y = pca_country$LAT), size = 4,   shape = 24, 
+             fill = COL[round(50*(pca_country$PC3-min(pca_country$PC3)+0.02))])
+#choose PC3 since the highest correlation with geograpgy
       
       
         
@@ -187,53 +194,11 @@ ggplot(data = world) +
 #We will run the GWAS analysis in rrBLUP package
 #Correct for multiple testing
 #And finally we will look for significant markers and draw the Manhattan plot.
-
-
 # create the geno file for rrBLUP package GWAS analysis
 geno_final <- data.frame(marker = MAP1[, 2], chrom = MAP1[, 1], pos = MAP1[, 4], t(Geno1 - 1), check.names = FALSE)  
 dim(Geno1)
 # create the pheno file
 pheno_final <- data.frame(NSFTV_ID = rownames(y), y = y)
 # Run the GWAS analysis
-myGWAS <- GWAS(pheno_final, geno_final, min.MAF = 0.05, P3D = TRUE, plot=FALSE)
-myGWAS1 <- GWAS(pheno_final, geno_final, n.PC=4, min.MAF = 0.05, P3D = TRUE, plot=TRUE)
-
-myGWAS1=myGWAS1[order(myGWAS1$y),]
-head(myGWAS1)
-
-##PLOT MANHATTAN PLOT
-manhattan(x = myGWAS, chr = "chrom", bp = "pos", p = "y", snp = "marker", col = c("blue4", 
-                                                                                  "orange3"), suggestiveline = -log10(1e-04), logp = TRUE)
-myGWAS=myGWAS[order(myGWAS$y),]
-head(myGWAS)
-
-####GPS
-#library(ape)
-#library(phytools)
-ADM=read.csv("Admixture.csv",row.names = 1)
-head(ADM)
-
-# Instruction to name bars:
-barNaming <- function(vec) {
-  retVec <- vec
-  for (k in 2:length(vec)) {
-    if (vec[k - 1] == vec[k])
-      retVec[k] <- ""
-  }
-  return(retVec)
-}
-
-
-# Size of the plot - these are margins, also related to the end appearance of the plot
-par(mar = c(1, 1, 1, 1))
-
-#This is my selection of colors and display for K=8 
-x=barplot(t(as.matrix(ADM[, 7:14])),
-        col = rainbow(8),
-          horiz = FALSE,
-          las = 2,
-        cex.axis = 0.1,
-        cex.names = 0.65,
-)
-text(x,0.5,barNaming(ADM$Country),srt=45, col='white')
+myGWAS <- GWAS(pheno_final, geno_final, min.MAF = 0.05, P3D = TRUE, plot=TRUE)
 
